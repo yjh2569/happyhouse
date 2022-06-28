@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.happyhouse.mapper.QnaMapper">
+
+	<!-- 게시글 전체 조회 -->
+	<select id="selectQna" parameterType="ListParameterDto" resultType="QnaDto">
+		select no, userid, title, anscheck, regtime
+		from QNA 
+		<where>
+			<include refid="search2"></include>
+		</where>
+		order by no desc limit ${start}, ${countPerPage}
+	</select>
+	
+	<!-- 게시글 상세 조회 -->
+	<select id="selectQnaByNo" parameterType="int" resultType="QnaDto">
+		select no, userid, title, content, anscheck, regtime
+		from QNA 
+		where no = #{no}
+	</select>
+
+	<!-- 게시글 등록 -->
+	<insert id="insertQna" parameterType="QnaDto">
+		insert into QNA(
+			title, userid, content
+		) values (
+			#{title}, #{userid}, #{content}
+		)
+	</insert>
+	
+	<!-- 게시글 수정 -->
+	<update id="updateQna" parameterType="QnaDto">
+		update QNA 
+		   set title = #{title}, 
+		   	   userid = #{userid}, 
+		   	   content = #{content},
+		   	   anscheck = #{anscheck}
+		 where no = #{no}
+	</update>
+	
+	<update id="qnaAnswered" parameterType="int">
+		update QNA 
+		   set anscheck = 1
+		 where no = #{no}
+	</update>
+
+	<!-- 게시글 삭제 -->
+	<delete id="deleteQna" parameterType="int">
+		delete 
+		from QNA 
+		where no = #{no}
+	</delete>
+
+	<select id="getTotalCount" parameterType="ListParameterDto" resultType="int">
+		select count(no) from QNA
+		<where>
+			<include refid="search2"></include>
+		</where>
+	</select>
+	<sql id="search2">
+		<if test="word != null and word != ''">
+			<if test="key == 'title'">
+				and ${key} like concat('%', #{word}, '%')
+			</if>
+			<if test="key != 'title'">
+				and ${key} = #{word}
+			</if>
+		</if>
+	</sql>
+</mapper>
+

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssafy.happyhouse.mapper.HouseMapMapper">
+
+	<select id="getSido" resultType="sidoGugunCodeDto">
+		select left(sidoCode,2) sidoCode, sidoName
+		from sidocode
+		order by sidoCode
+	</select>
+	
+	<select id="getGugunInSido" parameterType="string" resultType="sidoGugunCodeDto">
+		select left(gugunCode,5) gugunCode, gugunName
+		from guguncode
+		where left(gugunCode,2) = #{sido} and gugunCode is not null
+		order by gugunCode
+	</select>
+	
+	<select id="getDongInGugun" parameterType="string" resultType="houseInfoDto">
+		select distinct dongName, dongCode
+		from dongcode
+		where left(dongCode, 5) = #{gugun} and dongName is not null
+		order by dongName
+	</select>
+	
+	<select id="getAptInDong" parameterType="ListParameterDto" resultType="houseInfoDto">
+		select h.aptCode, h.aptName, h.buildyear, h.dongCode, h.dongName, h.jibun, h.lat, h.lng, si.sidoname, gu.gugunname,
+				(select dealAmount from housedeal where aptCode = h.aptCode and no = (select max(no) from housedeal where aptCode = h.aptCode)) recentPrice,
+				ROUND(ST_DISTANCE_SPHERE(POINT(#{lng}, #{lat}), POINT(h.lng, h.lat))/1000, 2) AS dist
+		from houseinfo h
+		left join sidocode si
+		on left(h.dongcode,2) = left(si.sidocode,2)
+		left join guguncode gu
+		on left(h.dongcode,5) = left(gu.guguncode,5)
+		where dongCode = #{word}
+		order by dist
+	</select>
+	
+	<select id="getAptRank" parameterType="ListParameterDto" resultType="houseInfoDto">
+		select h.aptCode, h.aptName, h.buildyear as buildyear, h.dongCode, h.dongName, h.jibun, h.lat, h.lng, si.sidoname, gu.gugunname,
+				cast(REPLACE((select dealAmount from housedeal where aptCode = h.aptCode and no = (select max(no) from housedeal where aptCode = h.aptCode)), ",", "") as signed integer) recentPrice,
+				cast((select area from housedeal where aptCode = h.aptCode and no = (select max(no) from housedeal where aptCode = h.aptCode)) as DECIMAL(9,2)) area,
+				ROUND(ST_DISTANCE_SPHERE(POINT(#{lng}, #{lat}), POINT(h.lng, h.lat))/1000, 2) AS dist
+		from houseinfo h
+		left join sidocode si
+		on left(h.dongcode,2) = left(si.sidocode,2)
+		left join guguncode gu
+		on left(h.dongcode,5) = left(gu.guguncode,5)
+		<where>
+			<include refid="search"></include>
+		</where>
+		order by ${rankKey} 
+		<if test="rankKey != null and rankKey != ''">
+			<if test="rankKey != 'dist'">
+				desc
+			</if>
+		</if>
+		limit 10
+	</select>
+	
+	<select id="getSearchList" parameterType="ListParameterDto" resultType="houseInfoDto">
+      select h.aptCode, h.aptName, h.buildyear, h.dongCode, h.dongName, h.jibun, h.lat, h.lng, si.sidoname, gu.gugunname,
+            (select dealAmount from housedeal where aptCode = h.aptCode and no = (select max(no) from housedeal where aptCode = h.aptCode)) recentPrice,
+            ROUND(ST_DISTANCE_SPHERE(POINT(#{lng}, #{lat}), POINT(h.lng, h.lat))/1000, 2) AS dist
+      from houseinfo h
+      left join sidocode si
+      on left(h.dongcode,2) = left(si.sidocode,2)
+      left join guguncode gu
+      on left(h.dongcode,5) = left(gu.guguncode,5)
+    <where>
+		<include refid="search"></include>
+	</where>
+		order by dist
+		limit #{start}, #{countPerPage}
+	</select>
+	
+   <select id="getTotalCount" parameterType="ListParameterDto" resultType="int">
+	select count(aptCode)
+	from houseinfo
+	<where>
+		<include refid="search"></include>
+	</where>
+	</select>
+	
+	<sql id="search">
+		<if test="word != null and word != ''">
+			<if test="key == 'aptName'">
+				${key} like concat('%', #{word}, '%')
+			</if>
+			<if test="key == 'dongCode'">
+				${key} = #{word}
+			</if>
+			<if test="key == 'dongName'">
+				${key} = #{word}
+			</if>
+		</if>
+	</sql>
+</mapper>
